@@ -92,16 +92,25 @@ class QuantumPortalSDK {
 
     async estimateGasUsingEthCall(chainId: SupportedChainIds, contract: string, encodedAbiForEstimateGas: string): Promise<number> {
         const provider = this.providers[chainId]
-        const res = await provider.call({
-            data: encodedAbiForEstimateGas,
-            to: contract,
-        })
+        try {
+            const res = await provider.call({
+                data: encodedAbiForEstimateGas,
+                to: contract,
+            })
+            // This should not succeed
+            throw new Error('Estimate gas method call must fail, but this call succeeded')
+        } catch (error: any) {
+            // Handle the revert reason
+            const revertReason = error.data
 
-        if (res.startsWith("0x08c379a0")) {
-            const errorMessage = ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + res.substring(10))
-            return Number.parseInt(errorMessage[0], 10)
-        } else {
-            throw new Error('Estimate gas method call must fail, but this call will succeed')
+            // Extract the gas used from the revert reason
+            if (revertReason && revertReason.startsWith("0x08c379a0")) {
+                const decodedReason = ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + revertReason.substring(10))
+                const gasUsed = Number(decodedReason[0])
+                return gasUsed
+            } else {
+                throw error
+            }
         }
     }
 
@@ -114,7 +123,7 @@ class QuantumPortalSDK {
     async getTargetChainGasTokenPrice(targetChainId: SupportedChainIds): Promise<bigint> {
         const feeConverterContract = new ethers.Contract(this.feeConverterAddresses[targetChainId], feeConverterABI, this.providers[targetChainId])
         const price = await feeConverterContract.targetChainGasTokenPriceX128(targetChainId)
-        return price.toBigInt()
+        return price
     }
 
     async calculateVariableFee(
