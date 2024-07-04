@@ -10,12 +10,12 @@ import "hardhat/console.sol";
 contract FeeConverterMock {
 
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
-    mapping(uint256 => uint256) public recentPriceX128; // Units: ETH/FRM * 2^32 or BNB/FRM * 2^32 etc
+    mapping(uint256 => uint256) public recentPriceX128; // Units: FRM/ETH * 2^128
     uint256 public feePerByte; // Units: FRM/bytes
 
     constructor() {
         feePerByte = 2 * 10**18; // 2 FRM per byte
-        recentPriceX128[31337] = 0x100 * Q128;
+        recentPriceX128[31337] = 60000 * Q128; // 60000 FRM per ETH
     }
     
     function setRecentPriceX128(uint256 chainId, uint256 price) external {
@@ -47,7 +47,7 @@ contract FeeConverterMock {
         console.log(size);
         console.log(feePerByte);
         console.log((size * feePerByte) / Q128);
-        return (size * feePerByte); // Units: FRM     FRM/ETH * 2^32 * byte * FRM/byte / 2^32
+        return (size * feePerByte);
     }
 
     /**
