@@ -9,24 +9,45 @@ interface MethodCallData {
 
 class QuantumPortalSDK {
     private providers: { [key in SupportedChainIds]: ethers.JsonRpcProvider }
+    private feeConverterAddresses: { [key in SupportedChainIds]: string }
+    private portalContractAddresses: { [key in SupportedChainIds]: string }
     private abiCoder: ethers.AbiCoder
 
     constructor() {
         this.providers = {} as { [key in SupportedChainIds]: ethers.JsonRpcProvider }
+        this.feeConverterAddresses = {} as { [key in SupportedChainIds]: string }
+        this.portalContractAddresses = {} as { [key in SupportedChainIds]: string }
+
         for (const chainId in networkConfigs) {
             const config = networkConfigs[chainId as SupportedChainIds]
             this.providers[chainId as SupportedChainIds] = new ethers.JsonRpcProvider(config.rpcUrl)
+            this.feeConverterAddresses[chainId as SupportedChainIds] = config.feeConverterAddress
+            this.portalContractAddresses[chainId as SupportedChainIds] = config.portalContractAddress
         }
+
         this.abiCoder = new ethers.AbiCoder()
+    }
+
+    setFeeConverterAddress(chainId: SupportedChainIds, feeConverter: string) {
+        this.feeConverterAddresses[chainId] = feeConverter
+    }
+
+    setPortalContractAddress(chainId: SupportedChainIds, portal: string) {
+        this.portalContractAddresses[chainId] = portal
+    }
+
+    setAddresses(chainId: SupportedChainIds, feeConverter: string, portal: string) {
+        this.setFeeConverterAddress(chainId, feeConverter)
+        this.setPortalContractAddress(chainId, portal)
     }
 
     async calculateFixedFee(sourceChainId: SupportedChainIds, targetChainId: SupportedChainIds, size: number): Promise<bigint> {
         const provider = this.providers[sourceChainId]
-        const feeConverterAddress = networkConfigs[sourceChainId].feeConverterAddress
+        const feeConverterAddress = this.feeConverterAddresses[sourceChainId]
         const feeConverterContract = new ethers.Contract(feeConverterAddress, feeConverterABI, provider)
         const adjustedSize = size + 9 * 32
         const fee = await feeConverterContract.targetChainFixedFee(targetChainId, adjustedSize)
-        return fee.toBigInt()
+        return fee
     }
 
     encodeFunctionData(types: string[], values: any[]): string {
@@ -50,7 +71,7 @@ class QuantumPortalSDK {
     ): Promise<number> {
         const provider = this.providers[sourceChainId]
         const encodedMethod = this.encodeFunctionData(methodCallData.types, methodCallData.values)
-        const portalContractAddress = networkConfigs[targetChainId].portalContractAddress
+        const portalContractAddress = this.portalContractAddresses[targetChainId]
         const portalContract = new ethers.Contract(portalContractAddress, portalABI, provider)
 
         const estimateMethodCall = portalContract.interface.encodeFunctionData(
@@ -91,9 +112,7 @@ class QuantumPortalSDK {
     }
 
     async getTargetChainGasTokenPrice(targetChainId: SupportedChainIds): Promise<bigint> {
-        const provider = this.providers[targetChainId]
-        const feeConverterAddress = networkConfigs[targetChainId].feeConverterAddress
-        const feeConverterContract = new ethers.Contract(feeConverterAddress, feeConverterABI, provider)
+        const feeConverterContract = new ethers.Contract(this.feeConverterAddresses[targetChainId], feeConverterABI, this.providers[targetChainId])
         const price = await feeConverterContract.targetChainGasTokenPriceX128(targetChainId)
         return price.toBigInt()
     }

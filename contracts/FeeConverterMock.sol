@@ -15,6 +15,7 @@ contract FeeConverterMock {
 
     constructor() {
         feePerByte = 2 * 10**18; // 2 FRM per byte
+        recentPriceX128[31337] = 0x100 * Q128;
     }
     
     function setRecentPriceX128(uint256 chainId, uint256 price) external {
@@ -42,8 +43,11 @@ contract FeeConverterMock {
         uint256 targetChainId,
         uint256 size
     ) external view returns (uint256) {
-        uint256 price = _targetChainGasTokenPriceX128(targetChainId);
-        return (price * size * feePerByte) / Q128;
+        console.log("Executing");
+        console.log(size);
+        console.log(feePerByte);
+        console.log((size * feePerByte) / Q128);
+        return (size * feePerByte); // Units: FRM     FRM/ETH * 2^32 * byte * FRM/byte / 2^32
     }
 
     /**

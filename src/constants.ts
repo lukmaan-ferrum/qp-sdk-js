@@ -22,11 +22,6 @@ export let portalContractAddresses = {
 	"31337": "0xTestPortalContractAddress"
 }
 
-export const setTestAddresses = (feeConverter: string, portal: string) => {
-	feeConverterAddresses = { ...feeConverterAddresses, "31337": feeConverter }
-	portalContractAddresses = { ...portalContractAddresses, "31337": portal }
-}
-
 export const networkConfigs = {
 	"1": { rpcUrl: rpcUrls["1"], feeConverterAddress: feeConverterAddresses["1"], portalContractAddress: portalContractAddresses["1"] },
 	"56": { rpcUrl: rpcUrls["56"], feeConverterAddress: feeConverterAddresses["56"], portalContractAddress: portalContractAddresses["56"] },
