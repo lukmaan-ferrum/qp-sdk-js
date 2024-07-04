@@ -33,4 +33,58 @@ describe("FeeEstimation", function () {
         const fee = await sdk.calculateFixedFee(sourceChainId, targetChainId, size)
         console.log(fee)
     })
+
+    it("calculateVariableFee should return a variable fee", async function () {
+        const sourceChainId: SupportedChainIds = "31337"
+        const targetChainId: SupportedChainIds = "31337"
+
+        const methodCallData: MethodCallData = {
+            functionName: 'setNumber',
+            types: ["uint256"],
+            values: [42]
+        }
+
+        const composerContract = "0x0000000000000000000000000000000000000001"  // Example address
+        const remoteContract = await feeConverterMock.getAddress()
+        const beneficiary = "0x0000000000000000000000000000000000000002" // Example beneficiary address
+
+        const variableFee = await sdk.calculateVariableFee(
+            sourceChainId,
+            targetChainId,
+            composerContract,
+            remoteContract,
+            beneficiary,
+            methodCallData
+        )
+
+        console.log(variableFee)
+        expect(variableFee).to.be.a('bigint')
+    })
+
+    it("calculateFeeForTransaction should return a total fee", async function () {
+        const sourceChainId: SupportedChainIds = "31337"
+        const targetChainId: SupportedChainIds = "31337"
+
+        const methodCallData: MethodCallData = {
+            functionName: 'setNumber',
+            types: ["uint256"],
+            values: [42]
+        }
+
+        const composerContract = "0x0000000000000000000000000000000000000001"  // Example address
+        const remoteContract = await feeConverterMock.getAddress()
+        const beneficiary = "0x0000000000000000000000000000000000000002" // Example beneficiary address
+
+        const totalFee = await sdk.calculateFeeForTransaction(
+            sourceChainId,
+            targetChainId,
+            methodCallData,
+            composerContract,
+            remoteContract,
+            beneficiary
+        )
+
+        console.log(totalFee)
+        expect(totalFee).to.be.a('bigint')
+    })
 });

@@ -1,13 +1,8 @@
-# Sample Hardhat Project
+# TODO
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+SDK code is in `src/`, with an example in `example/`. The remaining directories are only used in hardhat testing, and won't be published to npm.
 
-Try running some of the following tasks:
+### Test
+First need to start local hardhat node with `hh node`, then deploy mock contracts with `hh ignition deploy ignition/modules/QP.ts --network localhost`. Then run tests with `hh test`
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
-```
+(This can be improved)
