@@ -32,6 +32,14 @@ class QuantumPortalSDK {
         this.feeConverterAddresses[chainId] = feeConverter
     }
 
+    getFeeConverterAddress(chainId: SupportedChainIds): string {
+        return this.feeConverterAddresses[chainId]
+    }
+
+    getPortalContractAddress(chainId: SupportedChainIds): string {
+        return this.portalContractAddresses[chainId]
+    }
+
     setPortalContractAddress(chainId: SupportedChainIds, portal: string) {
         this.portalContractAddresses[chainId] = portal
     }
@@ -43,16 +51,23 @@ class QuantumPortalSDK {
 
     async calculateFixedFee(sourceChainId: SupportedChainIds, targetChainId: SupportedChainIds, size: number): Promise<bigint> {
         const provider = this.providers[sourceChainId]
-        const feeConverterAddress = this.feeConverterAddresses[sourceChainId]
-        const feeConverterContract = new ethers.Contract(feeConverterAddress, feeConverterABI, provider)
+        const feeConverterContract = new ethers.Contract(this.feeConverterAddresses[sourceChainId], feeConverterABI, provider)
         const adjustedSize = size + 9 * 32
         const fee = await feeConverterContract.targetChainFixedFee(targetChainId, adjustedSize)
         return fee
     }
 
-    encodeFunctionData(types: string[], values: any[]): string {
-        const encodedData = this.abiCoder.encode(types, values)
-        return encodedData
+    encodeFunctionData(methodCallData: any): string {
+        const encodedParameters = this.abiCoder.encode(
+            methodCallData.types,
+            methodCallData.values
+        );
+
+        const functionSignature = `${methodCallData.functionName}(${methodCallData.types.join(',')})`;
+        const functionSelector = ethers.keccak256(ethers.toUtf8Bytes(functionSignature)).substring(0, 10);
+        const encodedFunctionCall = functionSelector + encodedParameters.substring(2);
+
+        return encodedFunctionCall
     }
 
     getPayloadSize(encodedData: string): number {
@@ -69,32 +84,33 @@ class QuantumPortalSDK {
         beneficiary: string,
         methodCallData: MethodCallData
     ): Promise<number> {
-        const provider = this.providers[sourceChainId]
-        const encodedMethod = this.encodeFunctionData(methodCallData.types, methodCallData.values)
+        const provider = this.providers[targetChainId]
+        const calldataTarget = this.encodeFunctionData(methodCallData)
+        
         const portalContractAddress = this.portalContractAddresses[targetChainId]
         const portalContract = new ethers.Contract(portalContractAddress, portalABI, provider)
 
-        const estimateMethodCall = portalContract.interface.encodeFunctionData(
+        const calldataPortal = portalContract.interface.encodeFunctionData(
             'estimateGasForRemoteTransaction',
             [
-                targetChainId,
+                sourceChainId,
                 composerContract,
                 remoteContract,
                 beneficiary,
-                encodedMethod,
+                calldataTarget,
                 ethers.ZeroAddress,
                 0
             ]
         )
 
-        return this.estimateGasUsingEthCall(sourceChainId, portalContractAddress, estimateMethodCall)
+        return this.estimateGasUsingEthCall(targetChainId, portalContractAddress, calldataPortal)
     }
 
-    async estimateGasUsingEthCall(chainId: SupportedChainIds, contract: string, encodedAbiForEstimateGas: string): Promise<number> {
+    async estimateGasUsingEthCall(chainId: SupportedChainIds, contract: string, estimateMethodCall: string): Promise<number> {
         const provider = this.providers[chainId]
         try {
-            const res = await provider.call({
-                data: encodedAbiForEstimateGas,
+            await provider.call({
+                data: estimateMethodCall,
                 to: contract,
             })
             // This should not succeed
@@ -142,10 +158,12 @@ class QuantumPortalSDK {
             beneficiary,
             methodCallData
         )
+
         const baseGasFee = await this.getBaseGasFee(targetChainId)
-        const gasTokenPrice = await this.getTargetChainGasTokenPrice(targetChainId)
-        const gasTokenPriceInFRM = (gasTokenPrice * baseGasFee) / (2n ** 128n)
-        return BigInt(gasUsed) * gasTokenPriceInFRM
+        const gasCostInTargetNative = BigInt(gasUsed) * baseGasFee * 105n / 100n
+        const targetNativeToFRMPrice = await this.getTargetChainGasTokenPrice(sourceChainId)
+        const gasCostInFRM = (gasCostInTargetNative * targetNativeToFRMPrice) / (2n ** 128n)
+        return gasCostInFRM
     }
 
     async calculateFeeForTransaction(
@@ -156,9 +174,10 @@ class QuantumPortalSDK {
         remoteContract: string,
         beneficiary: string
     ): Promise<bigint> {
-        const encodedData = this.encodeFunctionData(methodCallData.types, methodCallData.values)
+        const encodedData = this.encodeFunctionData(methodCallData)
         const payloadSize = this.getPayloadSize(encodedData)
         const fixedFee = await this.calculateFixedFee(sourceChainId, targetChainId, payloadSize)
+
         const variableFee = await this.calculateVariableFee(
             sourceChainId,
             targetChainId,

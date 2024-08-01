@@ -14,8 +14,10 @@ contract FeeConverterMock {
     uint256 public feePerByte; // Units: FRM/bytes
 
     constructor() {
-        feePerByte = 2 * 10**18; // 2 FRM per byte
-        recentPriceX128[31337] = 60000 * Q128; // 60000 FRM per ETH
+        feePerByte = 1 * 10**16; // 2 FRM per byte
+        recentPriceX128[31337] = 80000 * Q128; // 60000 FRM per ETH
+        recentPriceX128[8453] = 80000 * Q128; // 60000 FRM per ETH
+        recentPriceX128[42161] = 80000 * Q128; // 60000 FRM per ETH
     }
     
     function setRecentPriceX128(uint256 chainId, uint256 price) external {
@@ -43,10 +45,6 @@ contract FeeConverterMock {
         uint256 targetChainId,
         uint256 size
     ) external view returns (uint256) {
-        console.log("Executing");
-        console.log(size);
-        console.log(feePerByte);
-        console.log((size * feePerByte) / Q128);
         return (size * feePerByte);
     }
 

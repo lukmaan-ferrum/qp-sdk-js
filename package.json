@@ -1,8 +1,9 @@
 {
   "name": "quantum-portal-sdk",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,7 +13,8 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.2",
-    "hardhat": "^2.22.6"
+    "hardhat": "^2.22.6",
+    "typescript": "^4.0.0"
   },
   "dependencies": {
     "ethers": "^6.13.1"
